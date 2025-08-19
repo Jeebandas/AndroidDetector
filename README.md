@@ -1,3 +1,6 @@
+ <img width="764" height="414" alt="screenshot" src="https://github.com/user-attachments/assets/656f3546-8a8b-4d3c-87c1-0d5de232d995" />
+
+
 =========================================
          AndroidDetector - Setup Guide
            by Jeeban JD
@@ -7,10 +10,11 @@ PREREQUISITES
 -----------------------------------------
 - Python 3.x installed on your system
 - pip3 installed
-- Apktool installed
+- Apktool installed:
   sudo apt update
   sudo apt install apktool -y
--JADX installed 
+
+- JADX installed: 
   sudo apt update
   sudo apt install jadx -y
 
