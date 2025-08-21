@@ -37,7 +37,8 @@ pip3 install -r requirements.txt
    ```bash
    git clone https://github.com/Jeebandas/AndroidDetector.git
    cd AndroidDetector
-   ./ detector.py myapp.apk
+   chmod +x detector.py 
+   ./detector.py myapp.apk
    ```
 
 2. **Install Python dependencies:**
