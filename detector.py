@@ -38,6 +38,7 @@ except ImportError:
 
 # === BANNER ===
 def print_banner():
+    """Prints a stylized banner."""
     banner = r"""
      ██████╗ ███████╗████████╗███████╗ ██████╗ ████████╗ ██████╗ ██████╗ 
     ██╔═══██╗██╔════╝╚══██╔══╝██╔════╝██╔═══██╗╚══██╔══╝██╔═══██╗██╔══██╗
@@ -47,12 +48,11 @@ def print_banner():
      ╚═════╝ ╚══════╝   ╚═╝   ╚══════╝ ╚═════╝    ╚═╝    ╚═════╝ ╚═╝   ██╗
     """
     print(colored(banner, "green", attrs=["bold"]))
-    print(colored("                  Developed by Jeeban JD", "yellow", attrs=["bold"]))
-    print(colored("                  APK Security Analyzer", "green", attrs=["bold"]))
+    print(colored("          Developed by Jeeban JD", "yellow", attrs=["bold"]))
+    print(colored("          APK Security Analyzer", "green", attrs=["bold"]))
     print(colored("="*72, "magenta", attrs=["bold"]))
     
 print_banner()
-
 # === CONFIGURATION ===
 APKTOOL_PATH = "apktool"
 STRINGS_PATH = "strings" # Utility to scan native libraries
@@ -72,21 +72,34 @@ INSECURE_PERMS = {
 
 # Mapping of check names to severity levels
 SEVERITY = {
-    "Hardcoded Secrets": "High",
-    "Insecure WebView": "Low",
-    "Cleartext Traffic Allowed": "Low",
-    "Debug Mode Enabled": "Low",
-    "Root Detection": "Low",
-    "Insecure Native Functions": "Low",
-    "Exported Components": "Low",
-    "Weak Crypto Usage": "High",
-    "Code Injection Risks": "High",
-    "SSL Pinning": "medium",
     "Screenshot Protection": "Low",
-    "Tapjacking Protection": "Low",
+    "Root Detection": "High",
     "Emulator Detection": "Low",
-    "Verbose Logging": "Low",
-    "Backup Allowed": "Low"
+    "Developer Mode Detection": "Low",
+    "Screen Mirroring Detection": "Low",
+    "SSL Pinning Detection": "Medium",
+    "Debug Mode": "High",
+    "Cleartext Traffic": "High",
+    "Hardcoded Password": "High",
+    "Virtual Space Detection": "Medium",
+    "Unsafe WiFi Detection": "Low",
+    "Repacking Detection": "High",
+    "Code Injection Protection": "High",
+    "Keylogger Protection": "Medium",
+    "ADB Status": "Low",
+    "Untrusted Source Detection": "Medium",
+    "Memory Corruption Protection": "High",
+    "WebView Security": "High",
+    "Tapjacking Protection": "Medium",
+    "Firebase Security": "Medium",
+    "Crypto Implementation": "Low",
+    "Biometric Implementation": "Low",
+    "Deep Link Handling": "Medium",
+    "Content Provider Security": "Medium",
+    "Log Security": "Low",
+    "Backup Allowed": "Low",
+    "Exported Components": "Medium",
+    "Insecure Native Functions": "High"
 }
 
 # === TOOL VERIFICATION ===
@@ -131,66 +144,74 @@ def scan_files(patterns, search_path):
     if not os.path.isdir(search_path):
         return "None", "Search path not found"
     
-    found_defs, found_calls = set(), set()
+    found_patterns = set()
     file_list = [os.path.join(r, f) for r, _, fs in os.walk(search_path) for f in fs if f.endswith(('.smali', '.xml'))]
 
     for file_path in tqdm(file_list, desc="Scanning Smali/XML", unit="file", leave=False):
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
-                for pat in patterns.get('defs', []):
+                for pat in patterns:
                     if re.search(pat, content, re.IGNORECASE):
-                        found_defs.add(pat)
-                for pat in patterns.get('calls', []):
-                    if re.search(pat, content, re.IGNORECASE):
-                        found_calls.add(pat)
+                        found_patterns.add(pat)
         except Exception:
             continue
 
-    if found_defs and found_calls:
-        return "High", f"Definitions ({len(found_defs)}) and Calls ({len(found_calls)}) found."
-    elif found_defs:
-        return "Low", f"Definitions ({len(found_defs)}) found, but no direct calls."
-    elif found_calls:
-        return "Low", f"Calls ({len(found_calls)}) found, but no custom definitions."
+    if found_patterns:
+        return "Detected", f"Found patterns: {', '.join(found_patterns)}"
     else:
-        return "None", "No evidence found."
+        return "Not Detected", "No evidence found."
 
 def analyze_apk_features(output_dir):
     """Orchestrates the analysis of security features in Smali code."""
-    checks = {
-        "Screenshot Protection": {'defs': [r'FLAG_SECURE'], 'calls': [r'setFlags\(.*?FLAG_SECURE']},
-        "Root Detection": {'defs': [r'isRooted', r'rootbeer', r'magisk'], 'calls': [r'/system/bin/su', r'/system/xbin/su']},
-        "Emulator Detection": {'defs': [r'isEmulator'], 'calls': [r'generic', r'goldfish', r'qemu', r'ranchu']},
-        "SSL Pinning": {'defs': [r'CertificatePinner', r'okhttp3\.CertificatePinner'], 'calls': [r'checkServerTrusted']},
-        "Debug Mode Enabled": {'defs': [r'android:debuggable=\"true\"'], 'calls': [r'Debug\.isDebuggerConnected']},
-        "Cleartext Traffic Allowed": {'defs': [r'android:usesCleartextTraffic=\"true\"'], 'calls': [r'http://[^\s"\'<]+']},
-        "Hardcoded Secrets": {'defs': [], 'calls': [
-            r"password\s*[:=]\s*['\"].+['\"]", r"secret\s*[:=]\s*['\"].+['\"]",
-            r"api_?key\s*[:=]\s*['\"].+['\"]", r"token\s*[:=]\s*['\"].+['\"]",
-            r'AIza[0-9A-Za-z\-_]{35}', # Google API Key
-            r'amzn\.mws\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' # Amazon MWS Auth Token
-        ]},
-        "Code Injection Risks": {'defs': [r'loadDex'], 'calls': [r'System\.loadLibrary', r'Runtime\.getRuntime\(\)\.exec', r'Class\.forName']},
-        "Insecure WebView": {'defs': [], 'calls': [r'setJavaScriptEnabled\(true\)', r'addJavascriptInterface']},
-        "Tapjacking Protection": {'defs': [], 'calls': [r'setFilterTouchesWhenObscured']},
-        "Verbose Logging": {'defs': [], 'calls': [r'Log\.d', r'Log\.v', r'System\.out\.println']},
-        "Weak Crypto Usage": {'defs': [], 'calls': [r'Cipher\.getInstance\("DES', r'Cipher\.getInstance\("MD5"', r'Cipher\.getInstance\("RC4"']}
-    }
+    checks = [
+        ("Screenshot Protection", [r"FLAG_SECURE", r"setFlags\(.*WindowManager.LayoutParams.FLAG_SECURE"]),
+        ("Root Detection", [r"su\s*\(", r"rootbeer", r"checkRoot", r"SuperUser", r"magisk", r"supersu", r"/system/bin/su", r"/system/xbin/su"]),
+        ("Emulator Detection", [r"ro\.build\.host", r"Genymotion", r"vbox86p", r"EmulatorDetection", r"isEmulator", r"qemu", r"goldfish"]),
+        ("Developer Mode Detection", [r"DEVELOPMENT_SETTINGS_ENABLED", r"Settings\.Global\.DEVELOPMENT_SETTINGS_ENABLED", r"isDeveloperMode"]),
+        ("Screen Mirroring Detection", [r"DisplayManager", r"getDisplays", r"VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR", r"isScreenCast"]),
+        ("SSL Pinning Detection", [r"checkServerTrusted", r"X509TrustManager", r"setSSLSocketFactory", r"TrustManager", r"CertificatePinner", r"pinCertificates"]),
+        ("Debug Mode", [r"android:debuggable=\"true\"", r"isDebuggable", r"BuildConfig\.DEBUG", r"Debug\.isDebuggerConnected"]),
+        ("Cleartext Traffic", [r"android:usesCleartextTraffic=\"true\"", r"http://", r"cleartext", r"setHostnameVerifier\(.*ALLOW_ALL"]),
+        ("Hardcoded Password", [r"password\s*=\s*['\"].+['\"]", r"passwd\s*=\s*['\"].+['\"]", r"secret\s*=\s*['\"].+['\"]", r"api[_-]?key\s*=\s*['\"].+['\"]"]),
+        ("Virtual Space Detection", [r"virtualapp", r"com\.lbe\.doubleagent", r"com\.android\.virtual", r"parallel", r"dualspace"]),
+        ("Unsafe WiFi Detection", [r"WifiManager", r"getScanResults", r"open wifi", r"WEP", r"no password", r"isSecure"]),
+        ("Repacking Detection", [r"checkSignature", r"verifySignature", r"getPackageManager", r"getPackageInfo", r"validateAppSignature"]),
+        ("Code Injection Protection", [r"loadLibrary", r"System\.load", r"Class\.forName", r"Reflection", r"getDeclaredMethod", r"invoke\("]),
+        ("Keylogger Protection", [r"InputMethodManager", r"onKey", r"dispatchKeyEvent", r"onKeyDown"]),
+        ("ADB Status", [r"adb_enabled", r"Settings\.Global\.ADB_ENABLED", r"isAdbEnabled"]),
+        ("Untrusted Source Detection", [r"INSTALL_NON_MARKET_APPS", r"Unknown Sources", r"verifyInstaller", r"getInstallerPackageName"]),
+        ("Memory Corruption Protection", [r"memset", r"memcpy", r"strcpy", r"strncpy", r"sprintf"]),
+        ("WebView Security", [r"setJavaScriptEnabled", r"addJavascriptInterface", r"WebViewClient", r"onReceivedSslError"]),
+        ("Tapjacking Protection", [r"setFilterTouchesWhenObscured", r"FLAG_WINDOW_IS_OBSCURED", r"onFilterTouchEventForSecurity"]),
+        ("Firebase Security", [r"FirebaseAuth", r"FirebaseDatabase", r"getReference", r"setValue"]),
+        ("Crypto Implementation", [r"Cipher", r"getInstance", r"AES", r"DES", r"RSA", r"BouncyCastle", r"SecureRandom"]),
+        ("Biometric Implementation", [r"BiometricPrompt", r"FingerprintManager", r"authenticate", r"canAuthenticate"]),
+        ("Deep Link Handling", [r"BROWSABLE", r"VIEW", r"intent-filter", r"android:scheme"]),
+        ("Content Provider Security", [r"content://", r"ContentProvider", r"android:exported=\"true\"", r"UriMatcher"]),
+        ("Log Security", [r"Log\.d", r"Log\.v", r"Log\.i", r"println", r"System\.out\.print"]),
+    ]
     
     results = []
     print("\n[*] Analyzing application features...")
-    for name, patterns in checks.items():
-        level, reason = scan_files(patterns, output_dir)
+    for name, patterns in checks:
+        status, reason = scan_files(patterns, output_dir)
         severity = SEVERITY.get(name, "Informational")
-        is_vulnerability = name in ["Debug Mode Enabled", "Cleartext Traffic Allowed", "Hardcoded Secrets", "Insecure WebView", "Verbose Logging", "Weak Crypto Usage"]
         
-        if level != "None":
-            status = colored(f"Detected ({level} confidence)", "yellow") if is_vulnerability else colored(f"Implemented ({level} confidence)", "green")
-            results.append({"check": name, "severity": severity, "status": status, "reason": reason})
+        # Determine the color based on status
+        if status == "Detected":
+            color = "yellow" if severity in ["Low", "Medium"] else "red"
+            status_text = colored(status, color)
         else:
-            status = colored("Not Detected", "green") if is_vulnerability else colored("Not Implemented", "red")
-            results.append({"check": name, "severity": severity, "status": status, "reason": "No evidence found."})
+            color = "green"
+            status_text = colored(status, color)
+        
+        results.append({
+            "check": name,
+            "severity": severity,
+            "status": status_text,
+            "reason": reason
+        })
             
     return results
 
@@ -228,18 +249,22 @@ def analyze_manifest(manifest_path):
         app_node = root.find('application')
 
         # Check for backup allowed
-        if app_node.get(f'{{{ns["android"]}}}allowBackup') == 'true':
+        if app_node is not None and app_node.get(f'{{{ns["android"]}}}allowBackup') == 'true':
             results.append({"check": "Backup Allowed", "severity": "Low", "status": colored("Enabled", "yellow"), "reason": "android:allowBackup is true, sensitive data may be backed up."})
+        else:
+            results.append({"check": "Backup Allowed", "severity": "Low", "status": colored("Disabled", "green"), "reason": "android:allowBackup is false or not set."})
 
         # Check for exported components
         exported_components = []
         for tag in ['activity', 'service', 'receiver', 'provider']:
-            for comp in app_node.findall(tag):
+            for comp in root.findall(f'.//{tag}'):
                 if comp.get(f'{{{ns["android"]}}}exported') == 'true':
                     name = comp.get(f'{{{ns["android"]}}}name', 'N/A')
                     exported_components.append(f"{tag}: {name}")
         if exported_components:
             results.append({"check": "Exported Components", "severity": "Medium", "status": colored("Detected", "yellow"), "reason": f"{len(exported_components)} components are exported."})
+        else:
+            results.append({"check": "Exported Components", "severity": "Medium", "status": colored("Not Detected", "green"), "reason": "No components are exported."})
             
         # Analyze permissions
         for perm in root.findall(".//uses-permission"):
@@ -247,7 +272,7 @@ def analyze_manifest(manifest_path):
             if name in SECURE_PERMS: permissions['secure'].append(name)
             elif name in INSECURE_PERMS: permissions['insecure'].append(name)
             else: permissions['unknown'].append(name)
-        
+            
     except ET.ParseError as e:
         print(colored(f"❌ Error parsing AndroidManifest.xml: {e}", "red"))
     return results, permissions
@@ -319,4 +344,3 @@ if __name__ == "__main__":
         generate_json_report(all_findings, perms, apk_filename, args.json)
 
     print(colored("✅ Analysis Complete!", "green", attrs=["bold"]))
-
