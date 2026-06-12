@@ -1,4 +1,7 @@
-<img width="937" height="427" alt="sleekshot" src="https://github.com/user-attachments/assets/15bcb1ed-bb35-4d00-ab80-3429fb575cbe" />
+<img width="1898" height="795" alt="Sleekshot 2026-06-12 16-03-55" src="https://github.com/user-attachments/assets/6d90228f-9372-493d-bde6-ff163470dc4f" />
+<img width="1908" height="801" alt="image" src="https://github.com/user-attachments/assets/4ea22499-e6ec-4e7d-ab1f-2b2cbc94dd8f" />
+
+
 
 # 📱 APK Security Analyzer (Advanced)
 
@@ -38,7 +41,7 @@ pip3 install -r requirements.txt
    git clone https://github.com/Jeebandas/AndroidDetector.git
    cd AndroidDetector
    chmod +x detector.py 
-   ./detector.py myapp.apk
+   python3 detector.py myapp.apk
    ```
 
 2. **Install Python dependencies:**
