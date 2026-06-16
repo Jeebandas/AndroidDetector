@@ -1,4 +1,5 @@
-<img width="1898" height="795" alt="Sleekshot 2026-06-12 16-03-55" src="https://github.com/user-attachments/assets/6d90228f-9372-493d-bde6-ff163470dc4f" />
+<img width="1898" height="795" alt="607040684-6d90228f-9372-493d-bde6-ff163470dc4f" src="https://github.com/user-attachments/assets/3e5bf90c-d19c-4d80-89fe-31725f67aea5" />
+
 <img width="1908" height="801" alt="image" src="https://github.com/user-attachments/assets/4ea22499-e6ec-4e7d-ab1f-2b2cbc94dd8f" />
 
 
